@@ -1,40 +1,188 @@
 <!DOCTYPE html>
-<html lang='en' >
-  <head>
-  <script type="text/javascript">
-if (typeof mynamespace === 'undefined') {
-    mynamespace = {};
+<html lang='en'>
+<head>
+<script type="text/javascript" src="jquery/jquery-1.6.4.min.js"></script>
+<script type="text/javascript" src="lib/persistence.js"></script>
+<script type="text/javascript" src="lib/persistence.store.sql.js"></script>
+<script type="text/javascript" src="lib/persistence.store.websql.js"></script>
+<script type="text/javascript" src="phonegap-1.3.0.js"></script>
+<script type="text/javascript" src="plugins/appcomm.js"></script>
+
+<script type="text/javascript">
+var console = {
+	log: function(){}
+};
+
+if(window['console'] === 'undefined'){
+	window['console'] = {};
+	
 }
 
-(function () {
+persistence.store.websql.config(persistence, 'test', 'test database',
+		5 * 1024 * 1024);
 
-    //This method is only called once (the first time the database is created)
-    function onDBCreate(database) {
-        //Attach the database because "window.openDatabase" would not have returned it
-        mynamespace.db = database;
-        //Create the table in the database
-        database.transaction(
-            function (tx) {tx.executeSql('CREATE TABLE tbl_name (key int unique, name text)',
-                [],
-                function (tx, res) {
-                    alert("Table Created Successfully");
-                },
-                function (tx, err) {
-                    alert("ERROR - Table creation failed - code: " + err.code + ", message: " + err.message);
-                });
-            }
-        );
-    }
+TEST1 = persistence.define("TESTDATA", {
+	name : "TEXT",
+	address : "TEXT",
+	email : "TEXT",
+	phone : "TEXT"
+});
 
-    if (window.openDatabase) {
-        //Will either return the existing database or null and call our creation callback onDBCreate
-        mynamespace.db = window.openDatabase('awesome', '1.0', 'The most awesome database ever', 5 * 1024 * 1024, onDBCreate);
-    } else {
-        alert("This device does not have HTML5 Database support");
-    }
-}());
+USER = persistence.define("USER", {
+	username : "TEXT",
+	password : "TEXT"
+});
+
+persistence.schemaSync();
+
+function addOne(){
+	try{
+	var test = new TEST1();
+	test.name = "name " ;
+	test.address = "address ";
+	test.email = "email " ;
+	test.phone = "phone ";
+					
+	persistence.add(test);
+	persistence.flush(function(){
+		alert("record added");
+	});
+	}catch(e){
+		alert("error " + e);
+	}
+}
+
+function addForm(i) {
+    return $.Deferred(function( dfd ){
+        TEST1.all().count(function(cnt){
+					var test = new TEST1();
+					test.name = "name " + i;
+					test.address = "address " + i;
+					test.email = "email " + i;
+					test.phone = "phone "+ i;
+					
+			persistence.add(test);
+			persistence.flush(function(){
+				alert("record added");
+			});
+			dfd.resolve();
+		});
+    }).promise();
+}
+
+function addForms(cur, total){
+		if(cur < total){
+			cur++;
+		}else{
+			
+			return;
+		};
+		
+		$.when(addForm(cur)).then(function(){
+			addForms(cur, total);
+		});
+}
+
+var addTestData = function(){
+	addForms(0, 1);
+	/*
+	$.when(addForms(0, 10)).then(function(){
+		
+	});
+	*/
+};
+
+var listData = function(){
+	var count = 0;
+	alert("init count " +  count);
+	TEST1.all().list(function(result){
+		result.forEach(function(rec){
+			
+			count += 1;
+		});
+		alert("total records " + count);
+	});
+};
+
+function callPlugin() {
+	try{
+		window.plugins.appcomm.running(function(result) {
+			alert('plugin result ' + result);
+		}, 
+
+		function(error) {
+			alert('Error retrieving plugin result:' + error);
+		}); 
+	}catch(e){
+		alert("error " + e);
+	}
+}
 </script>
 </head>
 <body>
+	<input type="button" value="Add Test Data" onclick="addOne()" />
+	<input type="button" value="List Data" onclick="listData()" />
+	
+	<br>
+	Set User:<br>
+	Username <input type="text" id="txtUsername"><br>
+	Password <input type="text" id="txtPassword"><br>
+	<input type="button" id="btnSaveUser" value="Save" >
+	<a href="#" onclick="javascript:saveData()">Save</a>
+	<input type="button" value="Plugin Call" onclick="callPlugin();return false;" /> 
+	
+	<script type="text/javascript">
+
+
+	$(document).bind('update_user', function(){
+		
+		USER.all().count(function(cnt){
+		
+			if(cnt > 0){
+				USER.all().one(function(usr){
+					
+					$("#txtUsername").val(usr.username);
+					$("#txtPassword").val(usr.password);
+				});
+			}
+		});
+	});
+	
+	$("#btnSaveUser").click(function(){
+		USER.all().count(function(cnt){
+			if(cnt > 0){
+				USER.all().one(function(user){
+					user.username = $("#txtUsername").val();
+					user.password = $("#txtPassword").val();
+					persistence.flush(function(){
+						alert("data saved");
+						$(document).trigger("update_user");
+					});
+				});
+			}else{
+				var user = new USER();
+				user.username = $("#txtUsername").val();
+				user.password = $("#txtPassword").val();
+				persistence.add(user);
+				persistence.flush(function(){
+					alert("data saved");
+					$(document).trigger("update_user");
+				});
+			}
+		});
+	});
+	
+	function saveData(){
+		try{
+		//$("#btnSaveUser").trigger("click");
+		alert("saving data");
+		}catch(e){
+			alert("error " +  e);
+		}
+	}
+	
+	$(document).trigger("update_user");
+
+</script>
 </body>
 </html>

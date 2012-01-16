@@ -12,4 +12,6 @@
   <plugin name="Contact"        value="com.phonegap.pim.Contact"/>
   <plugin name="MediaCapture"   value="com.phonegap.media.MediaCapture"/>
   <plugin name="Battery"        value="com.phonegap.battery.Battery"/>
+
+  <plugin name="AppComm"        value="com.promenta.plugins.AppComm"/>
 </plugins>
